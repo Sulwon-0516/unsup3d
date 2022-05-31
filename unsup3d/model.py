@@ -342,13 +342,17 @@ class Unsup3D():
 
         if self.use_conf_map:
             log_grid_image('Conf/conf_map_l1', conf_map_l1)
-            logger.add_histogram('Conf/conf_sigma_l1_hist', self.conf_sigma_l1, total_iter)
+            if not self.is_colab:
+                logger.add_histogram('Conf/conf_sigma_l1_hist', self.conf_sigma_l1, total_iter)
             log_grid_image('Conf/conf_map_l1_flip', conf_map_l1_flip)
-            logger.add_histogram('Conf/conf_sigma_l1_flip_hist', self.conf_sigma_l1_flip, total_iter)
+            if not self.is_colab:
+                logger.add_histogram('Conf/conf_sigma_l1_flip_hist', self.conf_sigma_l1_flip, total_iter)
             log_grid_image('Conf/conf_map_percl', conf_map_percl)
-            logger.add_histogram('Conf/conf_sigma_percl_hist', self.conf_sigma_percl, total_iter)
+            if not self.is_colab:
+                logger.add_histogram('Conf/conf_sigma_percl_hist', self.conf_sigma_percl, total_iter)
             log_grid_image('Conf/conf_map_percl_flip', conf_map_percl_flip)
-            logger.add_histogram('Conf/conf_sigma_percl_flip_hist', self.conf_sigma_percl_flip, total_iter)
+            if not self.is_colab:
+                logger.add_histogram('Conf/conf_sigma_percl_flip_hist', self.conf_sigma_percl_flip, total_iter)
 
         if not self.is_colab:
             logger.add_video('Image_rotate/recon_rotate', canon_im_rotate_grid, total_iter, fps=4)
