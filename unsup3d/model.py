@@ -1,4 +1,5 @@
 import os
+import os.path as path
 import math
 import glob
 import torch
@@ -13,7 +14,7 @@ EPS = 1e-7
 
 
 class Unsup3D():
-    def __init__(self, cfgs):
+    def __init__(self, cfgs, is_colab, root_dir = None):
         self.model_name = cfgs.get('model_name', self.__class__.__name__)
         self.device = cfgs.get('device', 'cpu')
         self.image_size = cfgs.get('image_size', 64)
@@ -34,6 +35,8 @@ class Unsup3D():
         self.lam_depth_sm = cfgs.get('lam_depth_sm', 0)
         self.lr = cfgs.get('lr', 1e-4)
         self.load_gt_depth = cfgs.get('load_gt_depth', False)
+        self.is_colab = is_colab
+        self.root_dir = root_dir
         self.renderer = Renderer(cfgs)
 
         ## networks and optimizers
@@ -272,26 +275,52 @@ class Unsup3D():
         canon_normal_rotate_grid = torch.stack(canon_normal_rotate_grid, 0).unsqueeze(0)  # (1,T,C,H,W)
 
         ## write summary
-        logger.add_scalar('Loss/loss_total', self.loss_total, total_iter)
-        logger.add_scalar('Loss/loss_l1_im', self.loss_l1_im, total_iter)
-        logger.add_scalar('Loss/loss_l1_im_flip', self.loss_l1_im_flip, total_iter)
-        logger.add_scalar('Loss/loss_perc_im', self.loss_perc_im, total_iter)
-        logger.add_scalar('Loss/loss_perc_im_flip', self.loss_perc_im_flip, total_iter)
-        logger.add_scalar('Loss/loss_depth_sm', self.loss_depth_sm, total_iter)
+        if not self.is_colab:
+            logger.add_scalar('Loss/loss_total', self.loss_total, total_iter)
+            logger.add_scalar('Loss/loss_l1_im', self.loss_l1_im, total_iter)
+            logger.add_scalar('Loss/loss_l1_im_flip', self.loss_l1_im_flip, total_iter)
+            logger.add_scalar('Loss/loss_perc_im', self.loss_perc_im, total_iter)
+            logger.add_scalar('Loss/loss_perc_im_flip', self.loss_perc_im_flip, total_iter)
+            logger.add_scalar('Loss/loss_depth_sm', self.loss_depth_sm, total_iter)
 
-        logger.add_histogram('Depth/canon_depth_raw_hist', canon_depth_raw_hist, total_iter)
-        vlist = ['view_rx', 'view_ry', 'view_rz', 'view_tx', 'view_ty', 'view_tz']
-        for i in range(self.view.shape[1]):
-            logger.add_histogram('View/'+vlist[i], self.view[:,i], total_iter)
-        logger.add_histogram('Light/canon_light_a', self.canon_light_a, total_iter)
-        logger.add_histogram('Light/canon_light_b', self.canon_light_b, total_iter)
-        llist = ['canon_light_dx', 'canon_light_dy', 'canon_light_dz']
-        for i in range(self.canon_light_d.shape[1]):
-            logger.add_histogram('Light/'+llist[i], self.canon_light_d[:,i], total_iter)
+            logger.add_histogram('Depth/canon_depth_raw_hist', canon_depth_raw_hist, total_iter)
+            vlist = ['view_rx', 'view_ry', 'view_rz', 'view_tx', 'view_ty', 'view_tz']
+            for i in range(self.view.shape[1]):
+                logger.add_histogram('View/'+vlist[i], self.view[:,i], total_iter)
+            logger.add_histogram('Light/canon_light_a', self.canon_light_a, total_iter)
+            logger.add_histogram('Light/canon_light_b', self.canon_light_b, total_iter)
+            llist = ['canon_light_dx', 'canon_light_dy', 'canon_light_dz']
+            for i in range(self.canon_light_d.shape[1]):
+                logger.add_histogram('Light/'+llist[i], self.canon_light_d[:,i], total_iter)
+
+        else:
+            # first make folder
+            save_dir = path.join(self.root_dir, str(total_iter))
+            os.makedirs(save_dir, exist_ok=True)
+            os.makedirs(path.join(save_dir, 'Image'), exist_ok=True)
+            os.makedirs(path.join(save_dir, 'Depth'), exist_ok=True)
+            os.makedirs(path.join(save_dir, 'Conf'), exist_ok=True)
+
+            print('current iter: ', total_iter)
+            print('Loss/loss_total: ', self.loss_total)
+            print('Loss/loss_l1_im: ' , self.loss_l1_im)
+            print('Loss/loss_l1_im_flip: ', self.loss_l1_im_flip)
+            print('Loss/loss_perc_im: ', self.loss_perc_im)
+            print('Loss/loss_perc_im_flip: ', self.loss_perc_im_flip)
+            
+
 
         def log_grid_image(label, im, nrow=int(math.ceil(b0**0.5)), iter=total_iter):
-            im_grid = torchvision.utils.make_grid(im, nrow=nrow)
-            logger.add_image(label, im_grid, iter)
+           
+
+            if not self.is_colab:
+                im_grid = torchvision.utils.make_grid(im, nrow=nrow)
+                logger.add_image(label, im_grid, iter)
+            else:
+                fname = path.join(save_dir, label)
+                fname = fname+".png"
+                torchvision.utils.save_image(im, fname, nrow = nrow)
+    
 
         log_grid_image('Image/input_image_symline', input_im_symline)
         log_grid_image('Image/canonical_albedo', canon_albedo)
@@ -307,8 +336,9 @@ class Unsup3D():
         log_grid_image('Depth/canonical_normal', canon_normal)
         log_grid_image('Depth/recon_normal', recon_normal)
 
-        logger.add_histogram('Image/canonical_albedo_hist', canon_albedo, total_iter)
-        logger.add_histogram('Image/canonical_diffuse_shading_hist', canon_diffuse_shading, total_iter)
+        if not self.is_colab:
+            logger.add_histogram('Image/canonical_albedo_hist', canon_albedo, total_iter)
+            logger.add_histogram('Image/canonical_diffuse_shading_hist', canon_diffuse_shading, total_iter)
 
         if self.use_conf_map:
             log_grid_image('Conf/conf_map_l1', conf_map_l1)
@@ -320,8 +350,9 @@ class Unsup3D():
             log_grid_image('Conf/conf_map_percl_flip', conf_map_percl_flip)
             logger.add_histogram('Conf/conf_sigma_percl_flip_hist', self.conf_sigma_percl_flip, total_iter)
 
-        logger.add_video('Image_rotate/recon_rotate', canon_im_rotate_grid, total_iter, fps=4)
-        logger.add_video('Image_rotate/canon_normal_rotate', canon_normal_rotate_grid, total_iter, fps=4)
+        if not self.is_colab:
+            logger.add_video('Image_rotate/recon_rotate', canon_im_rotate_grid, total_iter, fps=4)
+            logger.add_video('Image_rotate/canon_normal_rotate', canon_normal_rotate_grid, total_iter, fps=4)
 
         # visualize images and accuracy if gt is loaded
         if self.load_gt_depth:

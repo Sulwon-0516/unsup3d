@@ -8,8 +8,10 @@ from . import utils
 from .dataloaders import get_data_loaders
 
 
+
+
 class Trainer():
-    def __init__(self, cfgs, model):
+    def __init__(self, cfgs, model, is_colab, root_dir):
         self.device = cfgs.get('device', 'cpu')
         self.num_epochs = cfgs.get('num_epochs', 30)
         self.batch_size = cfgs.get('batch_size', 64)
@@ -22,11 +24,12 @@ class Trainer():
         self.archive_code = cfgs.get('archive_code', True)
         self.checkpoint_name = cfgs.get('checkpoint_name', None)
         self.test_result_dir = cfgs.get('test_result_dir', None)
+        self.is_colab = is_colab
         self.cfgs = cfgs
 
         self.metrics_trace = meters.MetricsTrace()
         self.make_metrics = lambda m=None: meters.StandardMetrics(m)
-        self.model = model(cfgs)
+        self.model = model(cfgs, is_colab, root_dir)
         self.model.trainer = self
         self.train_loader, self.val_loader, self.test_loader = get_data_loaders(cfgs)
 
@@ -102,8 +105,11 @@ class Trainer():
 
         ## initialize tensorboardX logger
         if self.use_logger:
-            from tensorboardX import SummaryWriter
-            self.logger = SummaryWriter(os.path.join(self.checkpoint_dir, 'logs', datetime.now().strftime("%Y%m%d-%H%M%S")))
+            if self.is_colab:
+                self.logger = None
+            else:
+                from tensorboardX import SummaryWriter
+                self.logger = SummaryWriter(os.path.join(self.checkpoint_dir, 'logs', datetime.now().strftime("%Y%m%d-%H%M%S")))
 
             ## cache one batch for visualization
             self.viz_input = self.val_loader.__iter__().__next__()
