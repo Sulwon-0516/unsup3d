@@ -17,6 +17,8 @@ parser.add_argument('--config', default=None, type=str, help='Specify a config f
 parser.add_argument('--gpu', default=None, type=int, help='Specify a GPU device')
 parser.add_argument('--num_workers', default=4, type=int, help='Specify the number of worker threads for data loaders')
 parser.add_argument('--seed', default=0, type=int, help='Specify a random seed')
+parser.add_argument('--save_dir', default='/content/drive/MyDrive/Unsup3D', type = str, help = 'directory, that result will be saved')
+parser.add_argument('--exp_name', default='default', type = str, help = 'name of folder, will be generated in save_dir')
 args = parser.parse_args()
 
 ## set up

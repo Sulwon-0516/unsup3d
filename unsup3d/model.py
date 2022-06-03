@@ -36,7 +36,7 @@ class Unsup3D():
         self.lr = cfgs.get('lr', 1e-4)
         self.load_gt_depth = cfgs.get('load_gt_depth', False)
         self.is_colab = is_colab
-        self.root_dir = root_dir
+        self.root_dir = cfgs.get('root_save_dir', root_dir)
         self.renderer = Renderer(cfgs)
 
         ## networks and optimizers
@@ -300,6 +300,7 @@ class Unsup3D():
             os.makedirs(path.join(save_dir, 'Image'), exist_ok=True)
             os.makedirs(path.join(save_dir, 'Depth'), exist_ok=True)
             os.makedirs(path.join(save_dir, 'Conf'), exist_ok=True)
+            os.makedirs(path.join(save_dir, 'Depth_gt'), exist_ok=True)
 
             print('current iter: ', total_iter)
             print('Loss/loss_total: ', self.loss_total)
@@ -311,7 +312,6 @@ class Unsup3D():
 
 
         def log_grid_image(label, im, nrow=int(math.ceil(b0**0.5)), iter=total_iter):
-           
 
             if not self.is_colab:
                 im_grid = torchvision.utils.make_grid(im, nrow=nrow)
@@ -365,10 +365,11 @@ class Unsup3D():
             sie_map_masked = self.sie_map_masked[:b0].detach().unsqueeze(1).cpu() *1000
             norm_err_map_masked = self.norm_err_map_masked[:b0].detach().unsqueeze(1).cpu() /100
 
-            logger.add_scalar('Acc_masked/MAE_masked', self.acc_mae_masked.mean(), total_iter)
-            logger.add_scalar('Acc_masked/MSE_masked', self.acc_mse_masked.mean(), total_iter)
-            logger.add_scalar('Acc_masked/SIE_masked', self.acc_sie_masked.mean(), total_iter)
-            logger.add_scalar('Acc_masked/NorErr_masked', self.acc_normal_masked.mean(), total_iter)
+            if not self.is_colab:
+                logger.add_scalar('Acc_masked/MAE_masked', self.acc_mae_masked.mean(), total_iter)
+                logger.add_scalar('Acc_masked/MSE_masked', self.acc_mse_masked.mean(), total_iter)
+                logger.add_scalar('Acc_masked/SIE_masked', self.acc_sie_masked.mean(), total_iter)
+                logger.add_scalar('Acc_masked/NorErr_masked', self.acc_normal_masked.mean(), total_iter)
 
             log_grid_image('Depth_gt/depth_gt', depth_gt)
             log_grid_image('Depth_gt/normal_gt', normal_gt)

@@ -11,6 +11,15 @@ import zipfile
 
 def setup_runtime(args):
     """Load configs, initialize CUDA, CuDNN and the random seeds."""
+    # make directory
+    if not os.path.isdir(args.save_dir):
+        print(args.save_dir, ": doesn't exists")
+        assert(0)
+
+    os.makedirs(os.path.join(args.save_dir, args.exp_name), exist_ok=True)
+    cfgs['root_save_dir'] = os.path.join(args.save_dir, args.exp_name)
+    cfgs['checkpoint_dir'] = os.path.join(args.save_dir, args.exp_name)
+
 
     # Setup CUDA
     cuda_device_id = args.gpu
