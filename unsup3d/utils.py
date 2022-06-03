@@ -17,8 +17,7 @@ def setup_runtime(args):
         assert(0)
 
     os.makedirs(os.path.join(args.save_dir, args.exp_name), exist_ok=True)
-    cfgs['root_save_dir'] = os.path.join(args.save_dir, args.exp_name)
-    cfgs['checkpoint_dir'] = os.path.join(args.save_dir, args.exp_name)
+    
 
 
     # Setup CUDA
@@ -47,6 +46,8 @@ def setup_runtime(args):
     cfgs['seed'] = args.seed
     cfgs['num_workers'] = args.num_workers
     cfgs['device'] = 'cuda:0' if torch.cuda.is_available() and cuda_device_id is not None else 'cpu'
+    cfgs['root_save_dir'] = os.path.join(args.save_dir, args.exp_name)
+    cfgs['checkpoint_dir'] = os.path.join(args.save_dir, args.exp_name)
 
     print(f"Environment: GPU {cuda_device_id} seed {args.seed} number of workers {args.num_workers}")
     return cfgs
