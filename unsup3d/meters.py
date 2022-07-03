@@ -168,3 +168,4 @@ def plot_metrics(stats, pdf_path=None, fig=1, datasets=None, metrics=None):
         plt.savefig(pdf_path, format='pdf', bbox_inches='tight')
     plt.draw()
     plt.pause(0.0001)
+    plt.close()

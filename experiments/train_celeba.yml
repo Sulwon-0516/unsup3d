@@ -6,7 +6,7 @@ batch_size: 64
 checkpoint_dir: results/celeba
 save_checkpoint_freq: 1
 keep_num_checkpoint: 2
-resume: true
+resume: false
 use_logger: true
 log_freq: 500
 
@@ -14,10 +14,10 @@ log_freq: 500
 num_workers: 4
 image_size: 64
 load_gt_depth: false
-train_val_data_dir: data/celeba_cropped
+train_val_data_dir: data/celeba
 
 ## model
-model_name: unsup3d_celeba
+model_name: unsup3d_celeba_w_GP
 min_depth: 0.9
 max_depth: 1.1
 xyz_rotation_range: 60  # (-r,r) in degrees

@@ -11,7 +11,7 @@ from .renderer import Renderer
 
 
 EPS = 1e-7
-
+USE_GRADIENT_CLIP = True
 
 class Unsup3D():
     def __init__(self, cfgs, is_colab, root_dir = None):
@@ -121,6 +121,10 @@ class Unsup3D():
         for optim_name in self.optimizer_names:
             getattr(self, optim_name).zero_grad()
         self.loss_total.backward()
+        for net_name in self.network_names:
+            if USE_GRADIENT_CLIP:
+                torch.nn.utils.clip_grad_norm_(getattr(self, net_name).parameters(), max_norm=5)
+        
         for optim_name in self.optimizer_names:
             getattr(self, optim_name).step()
 

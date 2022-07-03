@@ -12,6 +12,7 @@ import zipfile
 def setup_runtime(args):
     """Load configs, initialize CUDA, CuDNN and the random seeds."""
     # make directory
+    
     if not os.path.isdir(args.save_dir):
         print(args.save_dir, ": doesn't exists")
         assert(0)

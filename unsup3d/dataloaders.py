@@ -105,7 +105,7 @@ def get_image_loader(data_dir, is_validation=False,
         batch_size=batch_size,
         shuffle=not is_validation,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory=True            
     )
     return loader
 
