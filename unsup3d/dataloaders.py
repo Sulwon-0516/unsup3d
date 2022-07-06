@@ -2,8 +2,13 @@ import os
 import torchvision.transforms as tfs
 import torch.utils.data
 import numpy as np
+import shutil
 from PIL import Image
 
+
+
+TEMP_ROOT = '/root/celeba_320'
+DATA_COPY = False
 
 def get_data_loaders(cfgs):
     batch_size = cfgs.get('batch_size', 64)
@@ -86,11 +91,17 @@ class ImageDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         fpath = self.paths[index % self.size]
         img = Image.open(fpath).convert('RGB')
+
+        if DATA_COPY:
+            shutil.copy2(fpath, TEMP_ROOT)
+
         hflip = not self.is_validation and np.random.rand()>0.5
         return self.transform(img, hflip=hflip)
 
     def __len__(self):
+        ##################################################################################################################
         return self.size
+        #return 64*5
 
     def name(self):
         return 'ImageDataset'

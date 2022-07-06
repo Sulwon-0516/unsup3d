@@ -37,9 +37,9 @@ class Renderer():
         K = [[fx, 0., cx],
              [0., fy, cy],
              [0., 0., 1.]]
-        K = torch.FloatTensor(K).to(self.device)
-        self.inv_K = torch.inverse(K).unsqueeze(0)
-        self.K = K.unsqueeze(0)
+        K = torch.FloatTensor(K)
+        self.inv_K = torch.inverse(K).unsqueeze(0).to(self.device)                  
+        self.K = K.unsqueeze(0).to(self.device)
         self.renderer = nr.Renderer(camera_mode='projection',
                                     light_intensity_ambient=1.0,
                                     light_intensity_directional=0.,
