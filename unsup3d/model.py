@@ -470,7 +470,7 @@ class Unsup3D():
     def get_extrinsic(self):
         b,_ = self.view.shape
         views = self.view.detach().cpu().numpy()
-        avg_depth = self.canon_depth[0:b//2,:,:].sum(dim=0).cpu().numpy()
+        avg_depth = self.canon_depth[0:b//2,:,:].sum(dim=0).detach().cpu().numpy()
 
         return views[0:b//2,:], avg_depth
 

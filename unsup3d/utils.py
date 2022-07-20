@@ -1,3 +1,4 @@
+from genericpath import exists
 import os
 import sys
 import glob
@@ -15,7 +16,7 @@ def setup_runtime(args):
     
     if not os.path.isdir(args.save_dir):
         print(args.save_dir, ": doesn't exists")
-        assert(0)
+        os.makedirs(args.save_dir, exist_ok=True)
 
     os.makedirs(os.path.join(args.save_dir, args.exp_name), exist_ok=True)
     

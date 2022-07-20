@@ -9,7 +9,7 @@ from tqdm import tqdm
 from .dataloaders import get_data_loaders
 
 
-
+IS_CAMERA = True
 
 class Trainer_():
     def __init__(self, cfgs, model, is_colab, root_dir):
@@ -32,7 +32,7 @@ class Trainer_():
         self.make_metrics = lambda m=None: meters.StandardMetrics(m)
         self.model = model(cfgs, is_colab, root_dir)
         self.model.trainer = self
-        self.train_loader, self.val_loader, self.test_loader = get_data_loaders(cfgs)
+        self.train_loader, self.val_loader, self.test_loader, trainds, valds, testds = get_data_loaders(cfgs)
 
     def load_checkpoint(self, optim=True):
         """Search the specified/latest checkpoint in checkpoint_dir and load the model and optimizer."""
@@ -113,7 +113,10 @@ class Trainer_():
                 self.logger = SummaryWriter(os.path.join(self.checkpoint_dir, 'logs', datetime.now().strftime("%Y%m%d-%H%M%S")))
 
             ## cache one batch for visualization
-            self.viz_input = self.val_loader.__iter__().__next__()
+            if IS_CAMERA:
+                self.viz_input, _ = self.val_loader.__iter__().__next__()
+            else:
+                self.viz_input = self.val_loader.__iter__().__next__()
 
         ## run epochs
         print(f"{self.model.model_name}: optimizing to {self.num_epochs} epochs")
@@ -134,24 +137,87 @@ class Trainer_():
 
         print(f"Training completed after {epoch+1} epochs.")
 
-    def run_epoch(self, loader, epoch=0, is_validation=False, is_test=False):
+    def run_epoch(self, loader, epoch=0, is_validation=False, is_test=False, is_camera=IS_CAMERA, img_paths = None):
         """Run one epoch."""
         is_train = not is_validation and not is_test
         metrics = self.make_metrics()
 
+
+        if is_camera:
+            # generate view directory
+            view_dir = os.path.join(self.checkpoint_dir,'views')
+            os.makedirs(view_dir, exist_ok=True)
+            
+            # generate sub-directories
+            train_view_dir = os.path.join(view_dir, 'train')
+            val_view_dir = os.path.join(view_dir, 'val')
+            os.makedirs(train_view_dir, exist_ok=True)
+            os.makedirs(val_view_dir, exist_ok=True)
+
+
         if is_train:
             print(f"Starting training epoch {epoch}")
-            self.model.set_train()
+            self.model.set_train() 
+
         else:
             print(f"Starting validation epoch {epoch}")
             self.model.set_eval()
+        
 
         for iter, input in enumerate(loader):
+            if is_camera:
+                cids = input[1].numpy()
+                input = input[0]
+
+                if iter == 0:
+                    cid_list = cids
+                else:
+                    cid_list = np.append(cid_list, cids, axis = 0)
+
             m = self.model.forward(input)
             if is_train:
+                # when it's training get the model estimation
+                if is_camera:
+                    views, avg_depth = self.model.get_extrinsic()
+
+                    if iter == 0:
+                        depth_sum = avg_depth
+                        all_views = views
+
+                        SAMPLE_PCS_PATH = os.path.join(view_dir, 'train_sample_pcs.npy')
+                        sample_pcs = self.model.get_canon_pc()
+                        sample_pcs = sample_pcs.detach().cpu().numpy()
+
+                        np.save(SAMPLE_PCS_PATH, sample_pcs)
+
+                    else:
+                        depth_sum += avg_depth
+                        all_views = np.append(all_views, views, axis=0)
+
+
                 self.model.backward()
+            
             elif is_test:
                 self.model.save_results(self.test_result_dir)
+            
+            else:
+                # validation case
+                if is_camera:
+                    views, avg_depth = self.model.get_extrinsic()
+
+                    if iter == 0:
+                        depth_sum = avg_depth
+                        all_views = views
+
+                        SAMPLE_PCS_PATH = os.path.join(view_dir, 'val_sample_pcs.npy')
+                        sample_pcs = self.model.get_canon_pc()
+                        sample_pcs = sample_pcs.detach().cpu().numpy()
+
+                        np.save(SAMPLE_PCS_PATH, sample_pcs)
+
+                    else:
+                        depth_sum += avg_depth
+                        all_views = np.append(all_views, views, axis=0)
 
             metrics.update(m, self.batch_size)
             print(f"{'T' if is_train else 'V'}{epoch:02}/{iter:05}/{metrics}")
@@ -161,6 +227,30 @@ class Trainer_():
                 if total_iter % self.log_freq == 0:
                     self.model.forward(self.viz_input)
                     self.model.visualize(self.logger, total_iter=total_iter, max_bs=25)
+
+
+        # when every epeoch is finished, save result.
+        n_case = all_views.shape[0]
+        depth_avg = depth_sum / n_case
+        cid_list = cid_list.squeeze()
+
+        if is_camera and is_train:
+            train_view_path = os.path.join(train_view_dir, 'view_train_%d.npy'%(epoch))
+            train_dep_path = os.path.join(train_view_dir, 'avg_dep_train_%d.npy'%(epoch))
+            cids_path = os.path.join(train_view_dir, 'cids_%d.npy'%(epoch))
+
+            np.save(train_view_path, all_views)
+            np.save(train_dep_path, depth_avg)
+            np.save(cids_path, cid_list)
+        elif is_camera and is_validation:
+            val_view_path = os.path.join(val_view_dir, 'view_val_%d.npy'%(epoch))
+            val_dep_path = os.path.join(val_view_dir, 'avg_dep_val_%d.npy'%(epoch))
+            cids_path = os.path.join(val_view_dir, 'cids_%d.npy'%(epoch))
+
+            np.save(val_view_path, all_views)
+            np.save(val_dep_path, depth_avg)
+            np.save(cids_path, cid_list)
+
         return metrics
 
 

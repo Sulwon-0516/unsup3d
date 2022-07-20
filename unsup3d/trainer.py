@@ -27,11 +27,13 @@ class Trainer():
         self.is_colab = is_colab
         self.cfgs = cfgs
 
+        
+
         self.metrics_trace = meters.MetricsTrace()
         self.make_metrics = lambda m=None: meters.StandardMetrics(m)
         self.model = model(cfgs, is_colab, root_dir)
         self.model.trainer = self
-        self.train_loader, self.val_loader, self.test_loader = get_data_loaders(cfgs)
+        self.train_loader, self.val_loader, self.test_loader, _, _, _ = get_data_loaders(cfgs)
 
     def load_checkpoint(self, optim=True):
         """Search the specified/latest checkpoint in checkpoint_dir and load the model and optimizer."""

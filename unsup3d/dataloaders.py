@@ -25,11 +25,15 @@ def get_data_loaders(cfgs):
     AB_dnames = cfgs.get('paired_data_dir_names', ['A', 'B'])
     AB_fnames = cfgs.get('paired_data_filename_diff', None)
 
+    N_img = cfgs.get('n_data', None)
+    get_id = cfgs.get('get_id', False)
+
     train_loader = val_loader = test_loader = None
+    train_cs = val_ds = test_ds = None
     if load_gt_depth:
         get_loader = lambda **kargs: get_paired_image_loader(**kargs, batch_size=batch_size, image_size=image_size, crop=crop, AB_dnames=AB_dnames, AB_fnames=AB_fnames)
     else:
-        get_loader = lambda **kargs: get_image_loader(**kargs, batch_size=batch_size, image_size=image_size, crop=crop)
+        get_loader = lambda **kargs: get_image_loader(**kargs, batch_size=batch_size, image_size=image_size, crop=crop, n_img=N_img, get_id=get_id)
 
     if run_train:
         train_data_dir = os.path.join(train_val_data_dir, "train")
@@ -37,15 +41,15 @@ def get_data_loaders(cfgs):
         assert os.path.isdir(train_data_dir), "Training data directory does not exist: %s" %train_data_dir
         assert os.path.isdir(val_data_dir), "Validation data directory does not exist: %s" %val_data_dir
         print(f"Loading training data from {train_data_dir}")
-        train_loader = get_loader(data_dir=train_data_dir, is_validation=False)
+        train_loader, train_ds = get_loader(data_dir=train_data_dir, is_validation=False)
         print(f"Loading validation data from {val_data_dir}")
-        val_loader = get_loader(data_dir=val_data_dir, is_validation=True)
+        val_loader, val_ds = get_loader(data_dir=val_data_dir, is_validation=True)
     if run_test:
         assert os.path.isdir(test_data_dir), "Testing data directory does not exist: %s" %test_data_dir
         print(f"Loading testing data from {test_data_dir}")
-        test_loader = get_loader(data_dir=test_data_dir, is_validation=True)
+        test_loader, test_ds = get_loader(data_dir=test_data_dir, is_validation=True)
 
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader, test_loader, train_ds, val_ds, test_ds
 
 
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', 'webp')
@@ -67,11 +71,17 @@ def make_dataset(dir):
 
 
 class ImageDataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, image_size=256, crop=None, is_validation=False):
+    def __init__(self, data_dir, image_size=256, crop=None, is_validation=False, n_img=None, get_id = False):
         super(ImageDataset, self).__init__()
         self.root = data_dir
         self.paths = make_dataset(data_dir)
-        self.size = len(self.paths)
+        self.get_id = get_id
+
+        if isinstance(n_img, type(None)):
+            self.size = len(self.paths)
+        else:
+            self.size = n_img
+        
         self.image_size = image_size
         self.crop = crop
         self.is_validation = is_validation
@@ -96,7 +106,11 @@ class ImageDataset(torch.utils.data.Dataset):
             shutil.copy2(fpath, TEMP_ROOT)
 
         hflip = not self.is_validation and np.random.rand()>0.5
-        return self.transform(img, hflip=hflip)
+
+        if self.get_id:
+            return self.transform(img, hflip=hflip), torch.tensor([index % self.size])
+        else:
+            return self.transform(img, hflip=hflip)
 
     def __len__(self):
         ##################################################################################################################
@@ -108,9 +122,9 @@ class ImageDataset(torch.utils.data.Dataset):
 
 
 def get_image_loader(data_dir, is_validation=False,
-    batch_size=256, num_workers=4, image_size=256, crop=None):
+    batch_size=256, num_workers=4, image_size=256, crop=None, n_img = None, get_id = False):
 
-    dataset = ImageDataset(data_dir, image_size=image_size, crop=crop, is_validation=is_validation)
+    dataset = ImageDataset(data_dir, image_size=image_size, crop=crop, is_validation=is_validation, n_img = n_img, get_id = get_id)
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -118,7 +132,7 @@ def get_image_loader(data_dir, is_validation=False,
         num_workers=num_workers,
         pin_memory=True            
     )
-    return loader
+    return loader, dataset
 
 
 ## paired AB image dataset ##

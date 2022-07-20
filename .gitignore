@@ -2,6 +2,7 @@ __pycache__
 data/*/
 pretrained/*/
 results
+result
 neural_renderer
 *.zip
 *.npy
