@@ -1,6 +1,7 @@
 import os
 import glob
 from datetime import datetime
+from matplotlib.colors import is_color_like
 import numpy as np
 import torch
 from . import meters
@@ -57,7 +58,11 @@ class Trainer():
     def save_checkpoint(self, epoch, optim=True):
         """Save model, optimizer, and metrics state to a checkpoint in checkpoint_dir for the specified epoch."""
         utils.xmkdir(self.checkpoint_dir)
-        checkpoint_path = os.path.join(self.checkpoint_dir, f'checkpoint{epoch:03}.pth')
+
+        if self.is_colab:
+            checkpoint_path = os.path.join(self.checkpoint_dir, f'checkpoint.pth')
+        else:
+            checkpoint_path = os.path.join(self.checkpoint_dir, f'checkpoint{epoch:03}.pth')
         state_dict = self.model.get_model_state()
         if optim:
             optimizer_state = self.model.get_optimizer_state()
