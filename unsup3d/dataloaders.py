@@ -29,7 +29,7 @@ def get_data_loaders(cfgs):
     get_id = cfgs.get('get_id', False)
 
     train_loader = val_loader = test_loader = None
-    train_cs = val_ds = test_ds = None
+    train_ds = val_ds = test_ds = None
     if load_gt_depth:
         get_loader = lambda **kargs: get_paired_image_loader(**kargs, batch_size=batch_size, image_size=image_size, crop=crop, AB_dnames=AB_dnames, AB_fnames=AB_fnames)
     else:
