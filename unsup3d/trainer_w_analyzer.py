@@ -5,12 +5,13 @@ import numpy as np
 import torch
 from . import meters
 from . import utils
+from tqdm import tqdm
 from .dataloaders import get_data_loaders
 
 
 
 
-class Trainer():
+class Trainer_():
     def __init__(self, cfgs, model, is_colab, root_dir):
         self.device = cfgs.get('device', 'cpu')
         self.num_epochs = cfgs.get('num_epochs', 30)
@@ -164,4 +165,55 @@ class Trainer():
 
 
 
-   
+######################################################################################
+
+    def result_analyze(self):
+        """Perform testing."""
+        VIEW_PATH = "/home/unsup3d/view_dir/views_90.npy"
+        AVG_DEPTH_PATH = "/home/unsup3d/view_dir/avg_depth_90.npy"
+        SAMPLE_PCS_PATH = "/home/unsup3d/view_dir/sample_pcs_90.npy"
+
+
+        from tensorboardX import SummaryWriter
+        self.logger = SummaryWriter(os.path.join(self.checkpoint_dir, 'logs', datetime.now().strftime("%Y%m%d-%H%M%S")))
+
+
+        self.model.to_device(self.device)
+        self.current_epoch = self.load_checkpoint(optim=False)
+        if self.test_result_dir is None:
+            self.test_result_dir = os.path.join(self.checkpoint_dir, f'test_results_{self.checkpoint_name}'.replace('.pth',''))
+        print(f"Saving testing results to {self.test_result_dir}")
+
+        with torch.no_grad():
+            print(f"Starting analyzing")
+            self.model.set_eval()
+
+            for iter, input in tqdm(enumerate(self.test_loader)):
+                m = self.model.forward(input)
+                views, avg_depth = self.model.get_extrinsic()
+
+                if iter == 0:
+                    depth_sum = avg_depth
+                    all_views = views
+
+                    sample_pcs = self.model.get_canon_pc()
+                    sample_pcs = sample_pcs.detach().cpu().numpy()
+
+                    np.save(SAMPLE_PCS_PATH, sample_pcs)
+                    self.model.visualize(self.logger, total_iter=1, max_bs=25)
+
+
+                else:
+                    depth_sum += avg_depth
+                    all_views = np.append(all_views, views, axis=0)
+                
+            n_case = all_views.shape[0]
+            depth_avg = depth_sum / n_case
+
+
+            print("all views shape: ", all_views.shape)
+            print("avg depth shape: ", depth_sum.shape)
+
+            np.save(VIEW_PATH, all_views)
+            np.save(AVG_DEPTH_PATH, depth_avg)
+

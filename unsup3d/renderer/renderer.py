@@ -178,3 +178,15 @@ class Renderer():
             warped_images = self.renderer.render_rgb(grid_3d_i, faces, textures).clamp(min=-1., max=1.)
             im_trans += [warped_images]
         return torch.stack(im_trans, 1)  # b x t x c x h x w
+
+
+
+####################################################################################################
+    def get_mesh(self, im, depth):
+        '''
+        Extract Mesh faces & vertexes with textures 
+        '''
+
+        b, c, h, w = im.shape
+        grid_3d = self.depth_to_3d_grid(depth)
+

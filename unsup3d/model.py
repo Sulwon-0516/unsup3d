@@ -466,3 +466,18 @@ class Unsup3D():
             header = header + '\nMean: ' + ',\t'.join(['%.8f'%x for x in mean])
             header = header + '\nStd: ' + ',\t'.join(['%.8f'%x for x in std])
             utils.save_scores(path, self.all_scores, header=header)
+
+    def get_extrinsic(self):
+        b,_ = self.view.shape
+        views = self.view.detach().cpu().numpy()
+        avg_depth = self.canon_depth[0:b//2,:,:].sum(dim=0).cpu().numpy()
+
+        return views[0:b//2,:], avg_depth
+
+
+    def get_canon_pc(self):
+        b, h, w = self.canon_depth.shape
+        pcs = self.renderer.depth_to_3d_grid(self.canon_depth)
+        pcs = pcs.reshape(b,-1,3)
+
+        return pcs[0:b//2,:,:]
